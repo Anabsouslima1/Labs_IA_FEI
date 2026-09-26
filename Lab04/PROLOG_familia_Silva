@@ -1,0 +1,89 @@
+homem(jose).
+homem(joao).
+homem(paulo).
+homem(carlos).
+
+mulher(maria).
+mulher(ana).
+mulher(helena).
+mulher(joana).
+
+progenitor(jose, joao).
+progenitor(maria, joao).
+
+progenitor(jose, ana).
+progenitor(maria, ana).
+
+progenitor(joao, paulo).
+
+progenitor(ana, helena).
+progenitor(ana, joana).
+
+progenitor(helena, carlos).
+progenitor(paulo, carlos).
+
+filho(X,Y) :-
+    progenitor(Y,X).
+
+pai(X,Y) :-
+    progenitor(X,Y),
+    homem(X).
+
+mae(X,Y) :-
+    progenitor(X,Y),
+    mulher(X).
+
+irmao(X,Y) :-
+    homem(X),
+    progenitor(P,X),
+    progenitor(P,Y),
+    X \= Y.
+
+irma(X,Y) :-
+    mulher(X),
+    progenitor(P,X),
+    progenitor(P,Y),
+    X \= Y.
+
+irmao_ou_irma(X,Y) :-
+    irmao(X,Y).
+
+irmao_ou_irma(X,Y) :-
+    irma(X,Y).
+
+primo(X,Y) :-
+    progenitor(P,X),
+    progenitor(T,Y),
+    irmao_ou_irma(P,T),
+    X \= Y.
+
+sobrinho(X,Tio) :-
+    progenitor(P,X),
+    irmao_ou_irma(P,Tio),
+    X \= Tio.
+
+ascendente(X,Y) :-
+    progenitor(X,Y).
+
+ascendente(X,Y) :-
+    progenitor(X,Z),
+    ascendente(Z,Y).
+
+% 1. O João é filho do José?
+?- filho(joao, jose).
+
+% 2. Quem são os filhos da Maria?
+?- filho(X, maria).
+
+% 3. Quem são os primos do Paulo?
+?- primo(X, paulo).
+
+% 4. Quais são os sobrinhos/sobrinhas de cada tio?
+?- sobrinho(X, Tio).
+
+% 5. Quem são os ascendentes do Carlos?
+?- ascendente(X, carlos).
+
+% 6. A Helena tem irmãos? E irmãs?
+?- irmao(X, helena).
+?- irma(X, helena).
