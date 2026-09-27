@@ -1,118 +1,136 @@
+pip install scikit-fuzzy
 import numpy as np
+import skfuzzy as fuzz
+from skfuzzy import control as ctrl
 
-def triangular(x, a, b, c):
-    if a == b:
-        if x <= b:
-            return 1.0
-        elif x >= c:
-            return 0.0
-        else:
-            return (c - x) / (c - b)
-    if b == c:
-        if x >= b:
-            return 1.0
-        elif x <= a:
-            return 0.0
-        else:
-            return (x - a) / (b - a)
-    if x <= a or x >= c:
-        return 0.0
-    elif x == b:
-        return 1.0
-    elif x < b:
-        return (x - a) / (b - a)
-    else:
-        return (c - x) / (c - b)
+distancia = ctrl.Antecedent(np.arange(0, 101, 1), 'distancia')
+velocidade = ctrl.Antecedent(np.arange(0, 101, 1), 'velocidade')
+pressao = ctrl.Consequent(np.arange(0, 101, 1), 'pressao')
+
+# =========================
+# FUNÇÕES DE PERTINÊNCIA
+# =========================
 
 # Distância
-def distancia_curta(x):
-    return triangular(x, 0, 0, 40)
-
-def distancia_media(x):
-    return triangular(x, 20, 50, 80)
-
-def distancia_longa(x):
-    return triangular(x, 60, 100, 100)
+distancia['curta'] = fuzz.trimf(distancia.universe, [0, 0, 40])
+distancia['media'] = fuzz.trimf(distancia.universe, [20, 50, 80])
+distancia['longa'] = fuzz.trimf(distancia.universe, [60, 100, 100])
 
 # Velocidade
-def velocidade_lenta(x):
-    return triangular(x, 0, 0, 40)
-
-def velocidade_moderada(x):
-    return triangular(x, 20, 50, 80)
-
-def velocidade_rapida(x):
-    return triangular(x, 60, 100, 100)
+velocidade['lenta'] = fuzz.trimf(velocidade.universe, [0, 0, 40])
+velocidade['moderada'] = fuzz.trimf(velocidade.universe, [20, 50, 80])
+velocidade['rapida'] = fuzz.trimf(velocidade.universe, [60, 100, 100])
 
 # Pressão
-def pressao_suave(x):
-    return triangular(x, 0, 0, 40)
+pressao['suave'] = fuzz.trimf(pressao.universe, [0, 0, 40])
+pressao['media'] = fuzz.trimf(pressao.universe, [20, 50, 80])
+pressao['forte'] = fuzz.trimf(pressao.universe, [60, 100, 100])
 
-def pressao_media(x):
-    return triangular(x, 20, 50, 80)
+# =========================
+# REGRAS DE INFERÊNCIA
+# =========================
 
-def pressao_forte(x):
-    return triangular(x, 60, 100, 100)
+regra1 = ctrl.Rule(
+    distancia['curta'] & velocidade['lenta'],
+    pressao['media']
+)
 
-def inferencia(distancia, velocidade):
-    dc = distancia_curta(distancia)
-    dm = distancia_media(distancia)
-    dl = distancia_longa(distancia)
-    vl = velocidade_lenta(velocidade)
-    vm = velocidade_moderada(velocidade)
-    vr = velocidade_rapida(velocidade)
+regra2 = ctrl.Rule(
+    distancia['curta'] & velocidade['moderada'],
+    pressao['forte']
+)
 
-    # Regras
-    r1 = min(dc, vl)
-    r2 = min(dc, vm)
-    r3 = min(dc, vr)
-    r4 = min(dm, vl)
-    r5 = min(dm, vm)
-    r6 = min(dm, vr)
-    r7 = min(dl, vl)
-    r8 = min(dl, vm)
-    r9 = min(dl, vr)
-  
-    # Agregação
-    suave = max(r4, r7, r8)
-    media = max(r1, r5, r9)
-    forte = max(r2, r3, r6)
-  
-    return suave, media, forte
+regra3 = ctrl.Rule(
+    distancia['curta'] & velocidade['rapida'],
+    pressao['forte']
+)
 
-def calcular_pressao(distancia, velocidade):
-    suave, media, forte = inferencia(distancia, velocidade)
-    valores = np.linspace(0, 100, 1001)
+regra4 = ctrl.Rule(
+    distancia['media'] & velocidade['lenta'],
+    pressao['suave']
+)
 
-    saida_suave = np.array([
-        min(suave, pressao_suave(x))
-        for x in valores
-    ])
+regra5 = ctrl.Rule(
+    distancia['media'] & velocidade['moderada'],
+    pressao['media']
+)
 
-    saida_media = np.array([
-        min(media, pressao_media(x))
-        for x in valores
-    ])
+regra6 = ctrl.Rule(
+    distancia['media'] & velocidade['rapida'],
+    pressao['forte']
+)
 
-    saida_forte = np.array([
-        min(forte, pressao_forte(x))
-        for x in valores
-    ])
+regra7 = ctrl.Rule(
+    distancia['longa'] & velocidade['lenta'],
+    pressao['suave']
+)
 
-    agregada = np.maximum(
-        saida_suave,
-        np.maximum(saida_media, saida_forte)
-    )
+regra8 = ctrl.Rule(
+    distancia['longa'] & velocidade['moderada'],
+    pressao['suave']
+)
 
-    if np.sum(agregada) == 0:
-        return 0
+regra9 = ctrl.Rule(
+    distancia['longa'] & velocidade['rapida'],
+    pressao['media']
+)
 
-    return np.sum(valores * agregada) / np.sum(agregada)
+# =========================
+# SISTEMA FUZZY
+# =========================
 
-# Entrada do usuário
-distancia = float(input("Digite a distância do obstáculo (m): "))
-velocidade = float(input("Digite a velocidade atual (km/h): "))
+sistema_controle = ctrl.ControlSystem([
+    regra1,
+    regra2,
+    regra3,
+    regra4,
+    regra5,
+    regra6,
+    regra7,
+    regra8,
+    regra9
+])
 
-pressao = calcular_pressao(distancia, velocidade)
+simulador = ctrl.ControlSystemSimulation(sistema_controle)
 
-print(f"Pressão no freio: {pressao:.2f}%")
+# =========================
+# ENTRADA DO USUÁRIO
+# =========================
+
+distancia_entrada = float(
+    input("Digite a distância do obstáculo (m): ")
+)
+
+velocidade_entrada = float(
+    input("Digite a velocidade atual (km/h): ")
+)
+
+# =========================
+# VALIDAÇÃO DAS ENTRADAS
+# =========================
+
+if not 0 <= distancia_entrada <= 100:
+    print("A distância deve estar entre 0 e 100 metros.")
+    exit()
+
+if not 0 <= velocidade_entrada <= 100:
+    print("A velocidade deve estar entre 0 e 100 km/h.")
+    exit()
+
+# =========================
+# INFERÊNCIA FUZZY
+# =========================
+
+simulador.input['distancia'] = distancia_entrada
+simulador.input['velocidade'] = velocidade_entrada
+
+simulador.compute()
+
+# =========================
+# RESULTADO
+# =========================
+
+resultado = simulador.output['pressao']
+
+print(f"Pressão no freio: {resultado:.2f}%")
+
